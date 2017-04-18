@@ -1,6 +1,7 @@
 /**
 *Epsilon r Labs RF Generator 30MHz 9.8GHz
 *Copyright (C) 2017 Jean Wlodarski
+* KaZjjW at gmailcom
 *
 *This program is free software: you can redistribute it and/or modify
 *it under the terms of the GNU General Public License as published by
@@ -17,25 +18,7 @@
 *
 */
 
-/**
- * \mainpage User Application template doxygen documentation
- *
- * \par Empty user application template
- *
- * Bare minimum empty user application template
- *
- * \par Content
- *
- * -# Include the ASF header files (through asf.h)
- * -# "Insert system clock initialization code here" comment
- * -# Minimal main function that starts with a call to board_init()
- * -# "Insert application code here" comment
- *
- */
-/*
- * Include header files for all drivers that have been imported from
- * Atmel Software Framework (ASF).
- */
+
 #include <stdint.h>
 //#include <stdbool.h>
 #include <stdlib.h>

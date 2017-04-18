@@ -1,6 +1,7 @@
 /**
 *Epsilon r Labs RF Generator 30MHz 9.8GHz
 *Copyright (C) 2017 Jean Wlodarski
+* KaZjjW at gmailcom
 *
 *This program is free software: you can redistribute it and/or modify
 *it under the terms of the GNU General Public License as published by
