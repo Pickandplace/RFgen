@@ -42,7 +42,7 @@ extern "C" {
 #endif
 
 #include "cc.h"
-
+#define SCPI_USER_CONFIG
 #ifdef SCPI_USER_CONFIG
 #include "scpi_user_config.h"
 #endif

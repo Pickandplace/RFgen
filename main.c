@@ -38,11 +38,12 @@
 #include <power.h>
 #include "scpi.h"
 #include "scpi-def.h"
+#include "RFgen.h"
 
 size_t SCPI_Write(scpi_t * context, const char * data, size_t len) {
 	(void) context;
 	//return fwrite(data, 1, len, stdout);
-	return udi_cdc_multi_write_buf(0, data, len);
+	return udi_cdc_write_buf(data, len);
 }
 
 scpi_result_t SCPI_Flush(scpi_t * context) {
@@ -52,37 +53,37 @@ scpi_result_t SCPI_Flush(scpi_t * context) {
 }
 
 int SCPI_Error(scpi_t * context, int_fast16_t err) {
-	char rx_buffer[10];
+	char rx_buffer[50];
 	(void) context;
 
 	//fprintf(stderr, "**ERROR: %d, \"%s\"\r\n", (int16_t) err, SCPI_ErrorTranslate(err));
-	udi_cdc_multi_write_buf(0, "**ERROR: ", 9);
+	udi_cdc_write_buf("**ERROR: ", 9);
 	itoa((int16_t)err, rx_buffer, 10);
 	udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 	udi_cdc_putc(' ');
 	udi_cdc_write_buf(SCPI_ErrorTranslate(err),strlen(SCPI_ErrorTranslate(err)));
-	udi_cdc_multi_write_buf(0, "\r\n", 2);
+	udi_cdc_write_buf("\r\n", 2);
 	return 0;
 }
 
 scpi_result_t SCPI_Control(scpi_t * context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val) {
-	char rx_buffer[10];
+	char rx_buffer[50];
 	(void) context;
 
 	if (SCPI_CTRL_SRQ == ctrl) {
 		//fprintf(stderr, "**SRQ: 0x%X (%d)\r\n", val, val);
-		udi_cdc_multi_write_buf(0, "**SRQ: ", 7);
+		udi_cdc_write_buf("**SRQ: ", 7);
 		utoa(val, rx_buffer, 10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
-		udi_cdc_multi_write_buf(0, "\r\n", 2);
+		udi_cdc_write_buf("\r\n", 2);
 		} else {
-				udi_cdc_multi_write_buf(0, "**CTRL ", 7);
+				udi_cdc_write_buf("**CTRL ", 7);
 				utoa(ctrl, rx_buffer, 10);
 				udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 				udi_cdc_putc(' ');
 				utoa(val, rx_buffer, 10);
 				udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
-				udi_cdc_multi_write_buf(0, "\r\n", 2);
+				udi_cdc_write_buf("\r\n", 2);
 		//fprintf(stderr, "**CTRL %02x: 0x%X (%d)\r\n", ctrl, val, val);
 	}
 	return SCPI_RES_OK;
@@ -92,7 +93,7 @@ scpi_result_t SCPI_Reset(scpi_t * context) {
 	(void) context;
 
 	//fprintf(stderr, "**Reset\r\n");
-	udi_cdc_multi_write_buf(0, "**Reset\r\n", 9);
+	udi_cdc_write_buf( "**Reset\r\n", 9);
 	return SCPI_RES_OK;
 }
 
@@ -120,11 +121,11 @@ uint8_t i;
 #define TWI_BAUDSETTING TWI_BAUD(F_SYS, BAUDRATE)
 
 u8g_t u8g;
-uint32_t Frequency_10 = 10000000; //100MHz
+//uint32_t Frequency_10 = 10000000; //100MHz
 char string[10];
 char string2[10];
-char Freq_string[11];
-char Freq_string_print[14];
+//char Freq_string[11];
+//char Freq_string_print[14];
 char Power_string_print[6];
 char PowerB_string_print[6];
 uint32_t freq_MHz = 50;
@@ -132,13 +133,16 @@ uint32_t freq_MHz_tmp, Freq_MHz_old ;
 uint16_t cnt_old;
 int16_t power_tmp;
 
-extern ui_t ui;
 
-int16_t power_dbm;
+
+//int16_t power_dbm;
 char Power_string[5];
-
-char smbuffer[20];
+#define SCPI_UART_BUFFER 40
+char smbuffer[SCPI_UART_BUFFER];
 uint8_t smbuffer_ptr;
+
+
+ui_t ui;
 #define	CUR_POS_MAIN_MAX	12
 #define	CUR_POS_MAIN_RFONOFF	3
 #define	CUR_POS_MAIN_10HZ	12
@@ -192,9 +196,10 @@ bool new_enc_val;
 bool enc_inc;
 //bool rfOnOff;
 bool freq_changed, pow_changed;
-bool lock_lost;
+//bool lock_lost;
 static volatile bool main_b_cdc_enable = true;
 volatile uint8_t USB_port;
+rfgen_t rfgen;
 ISR(TWIE_TWIM_vect)
     {
       TWI_MasterInterruptHandler(&twiMaster);
@@ -216,7 +221,7 @@ ISR(PORTB_INT0_vect)
 	}
 	else
 	{
-		ui.rfOnOff ^= 1;
+		rfgen.rfOnOff ^= 1;
 		pow_changed = 1;
 	}
 
@@ -332,12 +337,13 @@ int main (void)
 
 	QDEC_Total_Setup(&PORTA, 6, false, 0, EVSYS_CHMUX_PORTA_PIN6_gc, 0, EVSYS_QDIRM_00_gc, &TCC0, TC_EVSEL_CH0_gc, 16382);
 
-	power_dbm = -100; //-10.0 dBm
-	freq_tmp = (uint32_t)Frequency_10;
-	ltoa(Frequency_10,Freq_string,10);
-	string_digits_commas(Freq_string,Freq_string_print);
+	rfgen.Frequency_10 = 10000000; //100MHz
+	rfgen.power_dbm = -100; //-10.0 dBm
+	freq_tmp = rfgen.Frequency_10;
+	ltoa(rfgen.Frequency_10,rfgen.Freq_string,10);
+	string_digits_commas(rfgen.Freq_string,ui.Freq_string_print);
 
-	itoa(power_dbm,Power_string,10);
+	itoa(rfgen.power_dbm,Power_string,10);
 	string_digits_commas_dbm(Power_string, Power_string_print);
 	uint8_t tmp;
 	ui.refresh = 1;
@@ -380,13 +386,13 @@ int main (void)
 				{
 					smbuffer[smbuffer_ptr+1] = 0;
 					SCPI_Input(&scpi_context, smbuffer, strlen(smbuffer));
-					for(i=0;i<20;i++)
+					for(i=0;i<SCPI_UART_BUFFER;i++)
 						smbuffer[i] = 0;
 					smbuffer_ptr = 0;
 				}
 				else
 				{
-					if(smbuffer_ptr < 19)
+					if(smbuffer_ptr < SCPI_UART_BUFFER - 1)
 					smbuffer_ptr++;
 					else
 					smbuffer_ptr = 0;
@@ -408,54 +414,54 @@ int main (void)
 				switch(ui.cur_pos)
 				{
 					case	CUR_POS_MAIN_10HZ	:
-						string[0] = Freq_string_print[12];
+						string[0] = ui.Freq_string_print[12];
 						string[1] = 0;
 						u8g_DrawStr(&u8g,CUR_POS_MAIN_10HZ_X,UI_FREQ_POS_Y-1,string);
 					break;
 					case	CUR_POS_MAIN_100HZ	:
-						string[0] = Freq_string_print[11];
+						string[0] = ui.Freq_string_print[11];
 						string[1] = 0;
 						u8g_DrawStr(&u8g,CUR_POS_MAIN_100HZ_X,UI_FREQ_POS_Y-1,string);
 					break;
 					case	CUR_POS_MAIN_1kHZ	:
-						string[0] = Freq_string_print[9];
+						string[0] = ui.Freq_string_print[9];
 						string[1] = 0;
 						u8g_DrawStr(&u8g,CUR_POS_MAIN_1kHZ_X,UI_FREQ_POS_Y-1,string);
 					break;
 					case	CUR_POS_MAIN_10kHZ	:
-						string[0] = Freq_string_print[8];
+						string[0] = ui.Freq_string_print[8];
 						string[1] = 0;
 						u8g_DrawStr(&u8g,CUR_POS_MAIN_10kHZ_X,UI_FREQ_POS_Y-1,string);
 					break;
 					case	CUR_POS_MAIN_100kHZ	:
-						string[0] = Freq_string_print[7];
+						string[0] = ui.Freq_string_print[7];
 						string[1] = 0;
 						u8g_DrawStr(&u8g,CUR_POS_MAIN_100kHZ_X,UI_FREQ_POS_Y-1,string);
 					break;
 					case	CUR_POS_MAIN_1MHZ	:
-						string[0] = Freq_string_print[5];
+						string[0] = ui.Freq_string_print[5];
 						string[1] = 0;
 						u8g_DrawStr(&u8g,CUR_POS_MAIN_1MHZ_X,UI_FREQ_POS_Y-1,string);
 					break;
 					case	CUR_POS_MAIN_10MHZ	:
-						string[0] = Freq_string_print[4];
+						string[0] = ui.Freq_string_print[4];
 						string[1] = 0;
 						u8g_DrawStr(&u8g,CUR_POS_MAIN_10MHZ_X,UI_FREQ_POS_Y-1,string);
 					break;
 					case	CUR_POS_MAIN_100MHZ	:
-						if(Freq_string_print[3] == ' ')
+						if(ui.Freq_string_print[3] == ' ')
 							string[0] = '0';
 						else
-							string[0] = Freq_string_print[3];
+							string[0] = ui.Freq_string_print[3];
 						string[1] = 0;
 						u8g_DrawStr(&u8g,CUR_POS_MAIN_100MHZ_X,UI_FREQ_POS_Y-1,string);
 					break;
 					case	CUR_POS_MAIN_1GHZ	:
-						if(Freq_string_print[1] == ' ')
+						if(ui.Freq_string_print[1] == ' ')
 							string[1] = '0';
 						else
-							string[1] = Freq_string_print[1];
-						string[0] = Freq_string_print[0];
+							string[1] = ui.Freq_string_print[1];
+						string[0] = ui.Freq_string_print[0];
 						string[2] = 0;
 						u8g_DrawStr(&u8g,1,12,string);
 					break;
@@ -477,7 +483,7 @@ int main (void)
 				}
 		}
 
-		u8g_DrawStr(&u8g,0,UI_FREQ_POS_Y,Freq_string_print);
+		u8g_DrawStr(&u8g,0,UI_FREQ_POS_Y,ui.Freq_string_print);
 		tmp = u8g_GetStrPixelWidth(&u8g,"10,000,000,00");
 		u8g_DrawStr(&u8g,tmp+1,UI_FREQ_POS_Y,"0");
 		u8g_DrawStr(&u8g,tmp+10,UI_FREQ_POS_Y,"Hz");
@@ -491,7 +497,7 @@ int main (void)
 
 
 
-		if(ui.rfOnOff == 0)
+		if(rfgen.rfOnOff == 0)
 		{
 			u8g_DrawStr(&u8g,UI_RFONOFF_POS_X,UI_POW_POS_Y-1,"RF:OFF");
 		}
@@ -500,7 +506,7 @@ int main (void)
 			u8g_DrawStr(&u8g,UI_RFONOFF_POS_X,UI_POW_POS_Y-1,"RF:ON");
 			u8g_DrawStr(&u8g,UI_RFONOFF_POS_X,UI_POW_POS_Y,"   ON");
 		}
-		if(lock_lost == 1 )
+		if(rfgen.lock_lost == 1 )
 		{
 			u8g_DrawStr(&u8g,UI_LOCK_POS_X,UI_POW_POS_Y-1,"LCK!");
 		}
@@ -523,15 +529,15 @@ int main (void)
 
 		if((PORTC_IN & 0x40) != 0x40)
 		{
-			if(lock_lost == 0)
+			if(rfgen.lock_lost == 0)
 				ui.refresh = 1;
-			lock_lost	= 1;
+			rfgen.lock_lost	= 1;
 
 		}
 		else{
-			if(lock_lost == 1)
+			if(rfgen.lock_lost == 1)
 				ui.refresh = 1;
-			lock_lost = 0;
+			rfgen.lock_lost = 0;
 		}
 
 		if(cnt_old < (TCC0.CNT&0xfffe))
@@ -610,19 +616,19 @@ int main (void)
 						break;
 						case	CUR_POS_MAIN_01dBm	:
 							pow_changed = 1;
-							power_dbm +=  5;
+							rfgen.power_dbm +=  5;
 						break;
 						case	CUR_POS_MAIN_1dBm	:
 							pow_changed = 1;
-							power_dbm +=  10ul;
+							rfgen.power_dbm +=  10ul;
 						break;
 						case	CUR_POS_MAIN_10dBm	:
 							pow_changed = 1;
-							power_dbm +=  100ul;
+							rfgen.power_dbm +=  100ul;
 						break;
 						case	CUR_POS_MAIN_RFONOFF	:
-							ui.rfOnOff =  1;
-							LMX2592_RFonOff(&LMX2592, ui.rfOnOff);
+							rfgen.rfOnOff =  1;
+							LMX2592_RFonOff(&LMX2592, rfgen.rfOnOff);
 							LMX2592_configure(&LMX2592);
 						break;
 					}
@@ -684,27 +690,27 @@ int main (void)
 						break;
 						case	CUR_POS_MAIN_01dBm	:
 							pow_changed = 1;
-							power_dbm -=  5;
+							rfgen.power_dbm -=  5;
 						break;
 						case	CUR_POS_MAIN_1dBm	:
 							pow_changed = 1;
-							power_dbm -=  10ul;
+							rfgen.power_dbm -=  10ul;
 						break;
 						case	CUR_POS_MAIN_10dBm	:
 							pow_changed = 1;
-							power_dbm -=  100ul;
+							rfgen.power_dbm -=  100ul;
 						break;
 						case	CUR_POS_MAIN_RFONOFF	:
-							ui.rfOnOff ^=  1;
+							rfgen.rfOnOff ^=  1;
 							pow_changed = 1;
 						break;
 					}
 				}
 				if(freq_changed == 1)
 				{
-					Frequency_10 = (uint32_t)freq_tmp;
-					ultoa(Frequency_10,Freq_string,10);
-					string_digits_commas(Freq_string,Freq_string_print);
+					rfgen.Frequency_10 = (uint32_t)freq_tmp;
+					ultoa(rfgen.Frequency_10,rfgen.Freq_string,10);
+					string_digits_commas(rfgen.Freq_string,ui.Freq_string_print);
 					/*power_tmp = max_power(Frequency_10);
 					if(power_dbm > power_tmp)
 					power_dbm = power_tmp;
@@ -713,7 +719,7 @@ int main (void)
 					if(power_dbm <  power_tmp)
 					power_dbm = power_tmp;*/
 
-					itoa(power_dbm,Power_string,10);
+					itoa(rfgen.power_dbm,Power_string,10);
 
 					string_digits_commas_dbm(Power_string, Power_string_print);
 				}
@@ -727,24 +733,24 @@ int main (void)
 					power_tmp = min_power(Frequency_10);
 					if(power_dbm <  power_tmp)
 						power_dbm = power_tmp;*/
-					if(power_dbm > 0)
+					if(rfgen.power_dbm > 0)
 					{
-						power_dbm = 0;
+						rfgen.power_dbm = 0;
 						LMX2592.PowerB++;
 					}
-					if(power_dbm < -315)
+					if(rfgen.power_dbm < -315)
 					{
-						power_dbm = -315;
+						rfgen.power_dbm = -315;
 						if(LMX2592.PowerB > 0)
 							LMX2592.PowerB--;
 					}
 
-					if(power_dbm == -5)
+					if(rfgen.power_dbm == -5)
 					{
 						if(LMX2592.PowerB > 0)
 						{
 							LMX2592.PowerB--;
-							power_dbm = 0;
+							rfgen.power_dbm = 0;
 						}
 					}
 
@@ -763,7 +769,7 @@ int main (void)
 					}
 
 					power_tmp = LMX2592.PowerB;
-					itoa(power_dbm,Power_string,10);
+					itoa(rfgen.power_dbm,Power_string,10);
 					string_digits_commas_dbm(Power_string, Power_string_print);
 					itoa(LMX2592.PowerB,PowerB_string_print,10);
 				}
@@ -843,12 +849,12 @@ int main (void)
 	{
 		freq_changed = 0;
 		pow_changed = 0;
-		if(ui.rfOnOff == 1)
+		if(rfgen.rfOnOff == 1)
 		{
 
-			LMX2592_set_out_freq(&LMX2592, Frequency_10, 0);
+			LMX2592_set_out_freq(&LMX2592, rfgen.Frequency_10, 0);
 			//power_dbm = PowerSend(&LMX2592, Frequency_10, power_dbm);
-			PowerSend(&LMX2592, Frequency_10, power_dbm);
+			PowerSend(&LMX2592, rfgen.Frequency_10, rfgen.power_dbm);
 			LMX2592_RFonOff(&LMX2592, 1);
 			LMX2592_configure(&LMX2592);
 			/*if (USB_port == 1)
@@ -858,7 +864,7 @@ int main (void)
 		}
 		else
 		{
-			LMX2592_set_out_freq(&LMX2592, Frequency_10, 0);
+			LMX2592_set_out_freq(&LMX2592, rfgen.Frequency_10, 0);
 			LMX2592_RFonOff(&LMX2592, 0);
 			LMX2592_configure(&LMX2592);
 			/*if (USB_port == 1)
@@ -884,147 +890,6 @@ void OLEDcommand(uint8_t command)
 	while (twiMaster.status != TWIM_STATUS_READY);
 }
 
-void string_digits_commas(char *str1, char *str2)
-{
-	uint8_t i;
-	i = strlen(str1);
-	//we are using a /10 frequency
-	switch(i)
-	{
-		case 7:
-			str2[0] = ' ';
-			str2[1] = ' ';
-			str2[2] = ' ';
-			str2[3] = ' ';
-			str2[4] = str1[0];	//x0 MHz
-			str2[5] = str1[1];
-			str2[6] = ',';
-			str2[7] = str1[2];
-			str2[8] = str1[3];
-			str2[9] = str1[4];
-			str2[10] = ',';
-			str2[11] = str1[5];
-			str2[12] = str1[6];
-			str2[13] = 0;
-		break;
-		case 8:
-			str2[0] = ' ';
-			str2[1] = ' ';
-			str2[2] = ' ';
-			str2[3] = str1[0];	//x00 MHz
-			str2[4] = str1[1];
-			str2[5] = str1[2];
-			str2[6] = ',';
-			str2[7] = str1[3];
-			str2[8] = str1[4];
-			str2[9] = str1[5];
-			str2[10] = ',';
-			str2[11] = str1[6];
-			str2[12] = str1[7];
-			str2[13] = 0;
-		break;
-		case 9:
-			str2[0] = ' ';
-			str2[1] = str1[0];	//x GHz
-			str2[2] = ',';
-			str2[3] = str1[1];
-			str2[4] = str1[2];
-			str2[5] = str1[3];
-			str2[6] = ',';
-			str2[7] = str1[4];
-			str2[8] = str1[5];
-			str2[9] = str1[6];
-			str2[10] = ',';
-			str2[11] = str1[7];
-			str2[12] = str1[8];
-			str2[13] = 0;
-		break;
-		case 10:
-			str2[0] = str1[0];	//x0 GHz
-			str2[1] = str1[1];
-			str2[2] = ',';
-			str2[3] = str1[2];
-			str2[4] = str1[3];
-			str2[5] = str1[4];
-			str2[6] = ',';
-			str2[7] = str1[5];
-			str2[8] = str1[6];
-			str2[9] = str1[7];
-			str2[10] = ',';
-			str2[11] = str1[8];
-			str2[12] = str1[9];
-			str2[13] = 0;
-		break;
-	}
-
-}
-
-void string_digits_commas_dbm(char *str1, char *str2)
-{
-	uint8_t i;
-	i = strlen(str1);
-	if(str1[0] == '-')
-	{
-		switch(i)
-		{
-			case 2:
-				str2[0] = str1[0];
-				str2[1] = ' ';
-				str2[2] = '0';
-				str2[3] = '.';
-				str2[4] = str1[1];
-				str2[5]= 0;
-			break;
-			case 3:
-				str2[0] =  str1[0];
-				str2[1] = ' ';
-				str2[2] = str1[1];
-				str2[3] = '.';
-				str2[4] = str1[2];
-				str2[5]= 0;
-			break;
-			case 4:
-				str2[0] = str1[0];
-				str2[1] = str1[1];
-				str2[2] = str1[2];
-				str2[3] = '.';
-				str2[4] = str1[3];
-				str2[5]= 0;
-			break;
-		}
-	}
-	else
-	{
-		switch(i)
-		{
-			case 1:
-				str2[0] =  ' ';
-				str2[1] =  ' ';
-				str2[2] = '0';
-				str2[3] = '.';
-				str2[4] = str1[0];
-				str2[5]= 0;
-			break;
-			case 2:
-				str2[0] =  ' ';
-				str2[1] =  ' ';
-				str2[2] = str1[0];
-				str2[3] = '.';
-				str2[4] = str1[1];
-				str2[5]= 0;
-			break;
-			case 3:
-				str2[0] =  ' ';
-				str2[1] = str1[0];
-				str2[2] = str1[1];
-				str2[3] = '.';
-				str2[4] = str1[2];
-				str2[5]= 0;
-			break;
-		}
-	}
-
-}
 
 void main_suspend_action(void)
 {

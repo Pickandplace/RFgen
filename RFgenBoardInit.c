@@ -24,12 +24,10 @@
  *  Author: Jean
  */
 #include <asf.h>
-
+#include <string.h>
+#include "RFgen.h"
 void RfgenBoardInit(void)
 {
-
-
-
 	//RF Attenuator Port
 	PORTA_DIRSET = PIN0_bm;
 	PORTA_DIRSET = PIN1_bm;
@@ -84,6 +82,148 @@ void RfgenBoardInit(void)
 	//+4.5 V Enable
 	PORTC_DIRSET = PIN0_bm;
 	PORTC_OUTCLR = PIN0_bm;
+}
 
+
+
+void string_digits_commas(char *str1, char *str2)
+{
+	uint8_t i;
+	i = strlen(str1);
+	//we are using a /10 frequency
+	switch(i)
+	{
+		case 7:
+		str2[0] = ' ';
+		str2[1] = ' ';
+		str2[2] = ' ';
+		str2[3] = ' ';
+		str2[4] = str1[0];	//x0 MHz
+		str2[5] = str1[1];
+		str2[6] = ',';
+		str2[7] = str1[2];
+		str2[8] = str1[3];
+		str2[9] = str1[4];
+		str2[10] = ',';
+		str2[11] = str1[5];
+		str2[12] = str1[6];
+		str2[13] = 0;
+		break;
+		case 8:
+		str2[0] = ' ';
+		str2[1] = ' ';
+		str2[2] = ' ';
+		str2[3] = str1[0];	//x00 MHz
+		str2[4] = str1[1];
+		str2[5] = str1[2];
+		str2[6] = ',';
+		str2[7] = str1[3];
+		str2[8] = str1[4];
+		str2[9] = str1[5];
+		str2[10] = ',';
+		str2[11] = str1[6];
+		str2[12] = str1[7];
+		str2[13] = 0;
+		break;
+		case 9:
+		str2[0] = ' ';
+		str2[1] = str1[0];	//x GHz
+		str2[2] = ',';
+		str2[3] = str1[1];
+		str2[4] = str1[2];
+		str2[5] = str1[3];
+		str2[6] = ',';
+		str2[7] = str1[4];
+		str2[8] = str1[5];
+		str2[9] = str1[6];
+		str2[10] = ',';
+		str2[11] = str1[7];
+		str2[12] = str1[8];
+		str2[13] = 0;
+		break;
+		case 10:
+		str2[0] = str1[0];	//x0 GHz
+		str2[1] = str1[1];
+		str2[2] = ',';
+		str2[3] = str1[2];
+		str2[4] = str1[3];
+		str2[5] = str1[4];
+		str2[6] = ',';
+		str2[7] = str1[5];
+		str2[8] = str1[6];
+		str2[9] = str1[7];
+		str2[10] = ',';
+		str2[11] = str1[8];
+		str2[12] = str1[9];
+		str2[13] = 0;
+		break;
+	}
+
+}
+
+void string_digits_commas_dbm(char *str1, char *str2)
+{
+	uint8_t i;
+	i = strlen(str1);
+	if(str1[0] == '-')
+	{
+		switch(i)
+		{
+			case 2:
+			str2[0] = str1[0];
+			str2[1] = ' ';
+			str2[2] = '0';
+			str2[3] = '.';
+			str2[4] = str1[1];
+			str2[5]= 0;
+			break;
+			case 3:
+			str2[0] =  str1[0];
+			str2[1] = ' ';
+			str2[2] = str1[1];
+			str2[3] = '.';
+			str2[4] = str1[2];
+			str2[5]= 0;
+			break;
+			case 4:
+			str2[0] = str1[0];
+			str2[1] = str1[1];
+			str2[2] = str1[2];
+			str2[3] = '.';
+			str2[4] = str1[3];
+			str2[5]= 0;
+			break;
+		}
+	}
+	else
+	{
+		switch(i)
+		{
+			case 1:
+			str2[0] =  ' ';
+			str2[1] =  ' ';
+			str2[2] = '0';
+			str2[3] = '.';
+			str2[4] = str1[0];
+			str2[5]= 0;
+			break;
+			case 2:
+			str2[0] =  ' ';
+			str2[1] =  ' ';
+			str2[2] = str1[0];
+			str2[3] = '.';
+			str2[4] = str1[1];
+			str2[5]= 0;
+			break;
+			case 3:
+			str2[0] =  ' ';
+			str2[1] = str1[0];
+			str2[2] = str1[1];
+			str2[3] = '.';
+			str2[4] = str1[2];
+			str2[5]= 0;
+			break;
+		}
+	}
 
 }

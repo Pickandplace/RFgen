@@ -218,15 +218,7 @@ typedef struct LMX2592_struct{
 
 }LMX2592_t;
 
-typedef struct ui_struct  {
-	bool	cur_selected;
-	bool	menu;
-	uint8_t cur_pos;	//Cursor position (logical)
-	uint8_t cur_x;
-	uint8_t cur_y;
-	bool	refresh;
-	bool	rfOnOff;
-}ui_t;
+
 //#define VCO_D_B_PD(x)	(((x) & 0x80) >> 7)
 //#define VCO_D_A_PD(x)	(((x) & 0x40) >> 6)
 //#define CH_DIV_PD(x)	(((x) & 0x20) >> 5)

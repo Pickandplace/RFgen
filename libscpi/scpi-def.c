@@ -37,44 +37,88 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "asf.h"
 #include "libscpi/inc/scpi/scpi.h"
 #include "scpi-def.h"
 #include "LMX2592.h"
-
+#include "RFgen.h"
+#include "power.h"
 extern LMX2592_t LMX2592;
 extern ui_t ui;
+extern rfgen_t rfgen;
 
 static scpi_result_t GENERATOR_SCPI_QueryFrequency(scpi_t * context) {
-	SCPI_ResultUInt64(context, (LMX2592.Out_freq)*10);
+	SCPI_ResultUInt64(context, (rfgen.Frequency_10)*10);
 	return SCPI_RES_OK;
 }
-
+/*
+*SOURce:FREQuency
+*/
 static scpi_result_t GENERATOR_SCPI_SetFrequency(scpi_t * context) {
-	scpi_number_t param1, param2;
-	char bf[15];
+	scpi_number_t param1;
 
+	if (!SCPI_ParamNumber(context, scpi_special_numbers_def,  &param1,  TRUE)) {
+		SCPI_ErrorPush(context, SCPI_ERROR_MISSING_PARAMETER);
+		return SCPI_RES_ERR;
+	}
+	if( ((param1.content.value/10) < OUT_FREQ_MIN_KHZ) || ((param1.content.value/10) > OUT_FREQ_MAX_KHZ) )
+		{
+			SCPI_ErrorPush(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
+			return SCPI_RES_ERR;
+		}
+	rfgen.Frequency_10 = (param1.content.value/10);
+	ultoa(rfgen.Frequency_10,rfgen.Freq_string,10);
+	string_digits_commas(rfgen.Freq_string,ui.Freq_string_print);
+	if(LMX2592_set_out_freq(&LMX2592, rfgen.Frequency_10, 0) == -1)
+		return SCPI_RES_ERR;
+	LMX2592_configure(&LMX2592);
 	return SCPI_RES_OK;
 }
 static scpi_result_t GENERATOR_SCPI_QueryOutput(scpi_t * context) {
 
-	SCPI_ResultBool(context, ui.rfOnOff);
+	SCPI_ResultBool(context, rfgen.rfOnOff);
 	return SCPI_RES_OK;
 }
+
+
 static scpi_result_t GENERATOR_SCPI_SetOutput(scpi_t * context) {
 	scpi_bool_t param1;
 	/* read first parameter if present */
 	if (!SCPI_ParamBool(context, &param1, TRUE)) {
-		/* do something, if parameter not present */
+		SCPI_ErrorPush(context, SCPI_ERROR_MISSING_PARAMETER);
 		return SCPI_RES_ERR;
 	}
 
-	ui.rfOnOff = (bool)param1;
-	LMX2592_RFonOff(&LMX2592, ui.rfOnOff);
+	rfgen.rfOnOff = (bool)param1;
+	LMX2592_RFonOff(&LMX2592, rfgen.rfOnOff);
 	ui.refresh = 1;
 	//LMX2592_configure(&LMX2592);
 	return SCPI_RES_OK;
 }
+static scpi_result_t GENERATOR_SCPI_QueryPower(scpi_t * context) {
+	SCPI_ResultInt16(context, (rfgen.power_dbm));
+	return SCPI_RES_OK;
+}
 
+
+static scpi_result_t GENERATOR_SCPI_SetPower(scpi_t * context) {
+	scpi_number_t param1;
+
+	if (!SCPI_ParamNumber(context, scpi_special_numbers_def,  &param1,  TRUE)) {
+		SCPI_ErrorPush(context, SCPI_ERROR_MISSING_PARAMETER);
+		return SCPI_RES_ERR;
+	}
+	if( ((param1.content.value*10) < POWER_DBM10_MIN) || ((param1.content.value*10) > POWER_DBM10_MAX) )
+	{
+		SCPI_ErrorPush(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
+		return SCPI_RES_ERR;
+	}
+	rfgen.power_dbm = (param1.content.value);
+
+
+	LMX2592_configure(&LMX2592);
+	return SCPI_RES_OK;
+}
 static scpi_result_t DMM_MeasureVoltageDcQ(scpi_t * context) {
     scpi_number_t param1, param2;
     char bf[15];
@@ -438,6 +482,8 @@ const scpi_command_t scpi_commands[] = {
 	/* GENERATOR */
 	{.pattern = "SOURce:FREQuency", .callback = GENERATOR_SCPI_SetFrequency,},
 	{.pattern = "SOURce:FREQuency?", .callback = GENERATOR_SCPI_QueryFrequency,},
+	{.pattern = "SOURce:POWer", .callback = GENERATOR_SCPI_SetPower,},
+	{.pattern = "SOURce:POWer?", .callback = GENERATOR_SCPI_QueryPower,},
 	{.pattern = "OUTput:STATe", .callback = GENERATOR_SCPI_SetOutput,},
 	{.pattern = "OUTput:STATe?", .callback = GENERATOR_SCPI_QueryOutput,},
 
