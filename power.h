@@ -35,10 +35,4 @@
 
 int16_t PowerSend(LMX2592_t *LMX2592, uint32_t frequency, int16_t power );
 
-int16_t max_power(uint32_t frequency);
-int16_t min_power(uint32_t frequency);
-uint16_t *cal_picker(uint32_t frequency);
-
-int16_t cal_power_att(uint32_t frequency, int16_t power, uint8_t *LMX2592_pow, uint8_t *HMC424);
-
 #endif /* POWER_H_ */

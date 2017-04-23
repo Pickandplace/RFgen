@@ -43,14 +43,14 @@ extern "C" {
 
 #define SCPI_LINE_ENDING    "\r\n"    /*   use <CR><LF> carriage return + line feed as termination charcters */
 
-#define USE_FULL_ERROR_LIST 1
-#define USE_USER_ERROR_LIST 0
+#define USE_FULL_ERROR_LIST 0
+#define USE_USER_ERROR_LIST 1
 
 #define LIST_OF_USER_ERRORS \
-    X(SCPI_USER_ERROR_WARMUP_NOT_FINISHED,      101,  "The device has not finished the warm up process yet")            \
-    X(SCPI_USER_ERROR_INTERLOCK_OPEN,           102,  "Switching output to on is not allowed when interlock is open")   \
-
-
+	X(SCPI_ERROR_CALIBRATION_STATE_IS_OFF,                   100, "Calibration state is off")                     \
+	X(SCPI_ERROR_PLL_UNLOCKED,                   101, "PLL lost lock")                     \
+    X(SCPI_ERROR_DATA_OUT_OF_RANGE,            -222, "Data out of range")                            \
+    X(SCPI_ERROR_INCOMPATIBLE_TYPE,            -294, "Incompatible type")                            \
 
 #ifdef   __cplusplus
 }

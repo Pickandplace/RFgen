@@ -39,79 +39,15 @@
 #include "scpi.h"
 #include "scpi-def.h"
 #include "RFgen.h"
+#include "scpi_user_config.h"
 
-size_t SCPI_Write(scpi_t * context, const char * data, size_t len) {
-	(void) context;
-	//return fwrite(data, 1, len, stdout);
-	return udi_cdc_write_buf(data, len);
-}
-
-scpi_result_t SCPI_Flush(scpi_t * context) {
-	(void) context;
-
-	return SCPI_RES_OK;
-}
-
-int SCPI_Error(scpi_t * context, int_fast16_t err) {
-	char rx_buffer[50];
-	(void) context;
-
-	//fprintf(stderr, "**ERROR: %d, \"%s\"\r\n", (int16_t) err, SCPI_ErrorTranslate(err));
-	udi_cdc_write_buf("**ERROR: ", 9);
-	itoa((int16_t)err, rx_buffer, 10);
-	udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
-	udi_cdc_putc(' ');
-	udi_cdc_write_buf(SCPI_ErrorTranslate(err),strlen(SCPI_ErrorTranslate(err)));
-	udi_cdc_write_buf("\r\n", 2);
-	return 0;
-}
-
-scpi_result_t SCPI_Control(scpi_t * context, scpi_ctrl_name_t ctrl, scpi_reg_val_t val) {
-	char rx_buffer[50];
-	(void) context;
-
-	if (SCPI_CTRL_SRQ == ctrl) {
-		//fprintf(stderr, "**SRQ: 0x%X (%d)\r\n", val, val);
-		udi_cdc_write_buf("**SRQ: ", 7);
-		utoa(val, rx_buffer, 10);
-		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
-		udi_cdc_write_buf("\r\n", 2);
-		} else {
-				udi_cdc_write_buf("**CTRL ", 7);
-				utoa(ctrl, rx_buffer, 10);
-				udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
-				udi_cdc_putc(' ');
-				utoa(val, rx_buffer, 10);
-				udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
-				udi_cdc_write_buf("\r\n", 2);
-		//fprintf(stderr, "**CTRL %02x: 0x%X (%d)\r\n", ctrl, val, val);
-	}
-	return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_Reset(scpi_t * context) {
-	(void) context;
-
-	//fprintf(stderr, "**Reset\r\n");
-	udi_cdc_write_buf( "**Reset\r\n", 9);
-	return SCPI_RES_OK;
-}
-
-scpi_result_t SCPI_SystemCommTcpipControlQ(scpi_t * context) {
-	(void) context;
-
-	return SCPI_RES_ERR;
-}
 
 #define TWI_MASTER       TWIE
 #define TWI_MASTER_PORT  PORTE
 #define TWI_MASTER_ADDR  0x50
 
 
-void OLEDcommand(uint8_t command);
-void RfgenBoardInit(void);
-void string_digits_commas(char *str1, char *str2);
-void string_digits_commas_dbm(char *str1, char *str2);
+
 
 TWI_Master_t twiMaster;
 uint8_t twiBuffer[10];
@@ -126,7 +62,7 @@ char string[10];
 char string2[10];
 //char Freq_string[11];
 //char Freq_string_print[14];
-char Power_string_print[6];
+
 char PowerB_string_print[6];
 uint32_t freq_MHz = 50;
 uint32_t freq_MHz_tmp, Freq_MHz_old ;
@@ -136,70 +72,23 @@ int16_t power_tmp;
 
 
 //int16_t power_dbm;
-char Power_string[5];
+
 #define SCPI_UART_BUFFER 40
 char smbuffer[SCPI_UART_BUFFER];
 uint8_t smbuffer_ptr;
 
 
 ui_t ui;
-#define	CUR_POS_MAIN_MAX	12
-#define	CUR_POS_MAIN_RFONOFF	3
-#define	CUR_POS_MAIN_10HZ	12
-#define	CUR_POS_MAIN_100HZ	11
-#define	CUR_POS_MAIN_1kHZ	10
-#define	CUR_POS_MAIN_10kHZ	9
-#define	CUR_POS_MAIN_100kHZ	8
-#define	CUR_POS_MAIN_1MHZ	7
-#define	CUR_POS_MAIN_10MHZ	6
-#define	CUR_POS_MAIN_100MHZ	5
-#define	CUR_POS_MAIN_1GHZ	4
-#define	CUR_POS_MAIN_01dBm	2
-#define	CUR_POS_MAIN_1dBm	1
-#define	CUR_POS_MAIN_10dBm	0
-
-#define	CUR_SELECTED		1
-#define	CUR_FREE			0
-
-#define CUR_WIDTH				6
-#define	CUR_POS_MAIN_1HZ_X		91
-#define	CUR_POS_MAIN_10HZ_X		84
-#define	CUR_POS_MAIN_100HZ_X	77
-#define	CUR_POS_MAIN_1kHZ_X		63
-#define	CUR_POS_MAIN_10kHZ_X	56
-#define	CUR_POS_MAIN_100kHZ_X	49
-#define	CUR_POS_MAIN_1MHZ_X		35
-#define	CUR_POS_MAIN_10MHZ_X	28
-#define	CUR_POS_MAIN_100MHZ_X	21
-#define	CUR_POS_MAIN_1GHZ_X		7
-#define	CUR_POS_MAIN_01dBm_X	28
-#define	CUR_POS_MAIN_1dBm_X		14
-#define	CUR_POS_MAIN_10dBm_X	7
-
-#define	CUR_POS_MAIN_FREQ_Y	13
-#define	CUR_POS_MAIN_POW_Y	30
-#define UI_FREQ_POS_Y		12
-#define UI_POW_POS_Y		29
-
-#define UI_RFONOFF_POS_X		100
-#define UI_LOCK_POS_X		80
-
-#define POWER_UPPPER_LIMIT	100
-#define POWER_LOWER_LIMIT -300
-#define FREQ_UPPPER_LIMIT	1000000000//10GHz
-#define FREQ_LOWER_LIMIT 2000000//20MHz
-#define ENC_INIT		100
+rfgen_t rfgen;
 LMX2592_t LMX2592;
 int_fast16_t encoder_value;
 uint32_t freq_tmp;
 bool new_enc_val;
 bool enc_inc;
-//bool rfOnOff;
 bool freq_changed, pow_changed;
-//bool lock_lost;
 static volatile bool main_b_cdc_enable = true;
 volatile uint8_t USB_port;
-rfgen_t rfgen;
+
 ISR(TWIE_TWIM_vect)
     {
       TWI_MasterInterruptHandler(&twiMaster);
@@ -305,7 +194,7 @@ int main (void)
 	spi_master_setup_device(&SPIC, /*&spi_device_conf, */SPI_MODE_0, 4000000, 1);
 	spi_enable(&SPIC);
 
-	#define OLED_ADD 0x3c
+
 	u8g_InitI2C(&u8g, &u8g_dev_ssd1306_128x32_hw_spi,U8G_I2C_OPT_DEV_1 );
 
 	//qdec_position = 0;
@@ -316,40 +205,23 @@ int main (void)
 
 	//PORTD_OUTCLR = PIN0_bm;
 
-
-	LMX2592_init_config(&LMX2592);
-	LMX2592_reset();
-	delay_ms(100);
-	LMX2592_defaults();
-
-	LMX2592_set_PFD(&LMX2592, 100000000);
-	LMX2592_set_out_freq(&LMX2592,10000000, 0xFF);
-	LMX2592_RFonOff(&LMX2592, 0);
-	LMX2592_configure(&LMX2592);
+	RFgenReset(&LMX2592, &ui, &rfgen);
 	freq_changed = 0;
 	pow_changed = 0;
 	delay_ms(100);
 
-	LMX2592_write_24_reg(0x002304  );
+
 
 	sysclk_enable_peripheral_clock(&EVSYS);
 	sysclk_enable_peripheral_clock(&TCC0);
 
 	QDEC_Total_Setup(&PORTA, 6, false, 0, EVSYS_CHMUX_PORTA_PIN6_gc, 0, EVSYS_QDIRM_00_gc, &TCC0, TC_EVSEL_CH0_gc, 16382);
 
-	rfgen.Frequency_10 = 10000000; //100MHz
-	rfgen.power_dbm = -100; //-10.0 dBm
-	freq_tmp = rfgen.Frequency_10;
-	ltoa(rfgen.Frequency_10,rfgen.Freq_string,10);
-	string_digits_commas(rfgen.Freq_string,ui.Freq_string_print);
 
-	itoa(rfgen.power_dbm,Power_string,10);
-	string_digits_commas_dbm(Power_string, Power_string_print);
+	freq_tmp = rfgen.Frequency_10;
+
 	uint8_t tmp;
-	ui.refresh = 1;
-	ui.cur_pos = CUR_POS_MAIN_10MHZ;
-	ui.cur_x = CUR_POS_MAIN_10MHZ_X;
-	ui.cur_y = CUR_POS_MAIN_FREQ_Y;
+
 	encoder_value = CUR_POS_MAIN_10MHZ;
 	TCC0.CNT = 1000;
 	cnt_old = TCC0.CNT;
@@ -466,17 +338,17 @@ int main (void)
 						u8g_DrawStr(&u8g,1,12,string);
 					break;
 					case	CUR_POS_MAIN_01dBm	:
-						string[0] = Power_string_print[4];
+						string[0] = ui.Power_string_print[4];
 						string[1] = 0;
 						u8g_DrawStr(&u8g,CUR_POS_MAIN_01dBm_X,UI_POW_POS_Y-1,string);
 					break;
 					case	CUR_POS_MAIN_1dBm	:
-					string[0] = Power_string_print[2];
+					string[0] = ui.Power_string_print[2];
 					string[1] = 0;
 						u8g_DrawStr(&u8g,CUR_POS_MAIN_1dBm_X,UI_POW_POS_Y-1,string);
 					break;
 					case	CUR_POS_MAIN_10dBm	:
-					string[0] = Power_string_print[1];
+					string[0] = ui.Power_string_print[1];
 					string[1] = 0;
 						u8g_DrawStr(&u8g,CUR_POS_MAIN_10dBm_X,UI_POW_POS_Y-1,string);
 					break;
@@ -488,7 +360,7 @@ int main (void)
 		u8g_DrawStr(&u8g,tmp+1,UI_FREQ_POS_Y,"0");
 		u8g_DrawStr(&u8g,tmp+10,UI_FREQ_POS_Y,"Hz");
 
-		u8g_DrawStr(&u8g,0, UI_POW_POS_Y,Power_string_print);
+		u8g_DrawStr(&u8g,0, UI_POW_POS_Y,ui.Power_string_print);
 		tmp = u8g_GetStrPixelWidth(&u8g,"-10.0");
 		u8g_DrawStr(&u8g,tmp+4,UI_POW_POS_Y,"dBm");
 		u8g_DrawStr(&u8g, tmp+4+40,UI_POW_POS_Y,PowerB_string_print);
@@ -532,7 +404,7 @@ int main (void)
 			if(rfgen.lock_lost == 0)
 				ui.refresh = 1;
 			rfgen.lock_lost	= 1;
-
+			SCPI_ErrorPush(&scpi_context,SCPI_ERROR_PLL_UNLOCKED);
 		}
 		else{
 			if(rfgen.lock_lost == 1)
@@ -719,9 +591,9 @@ int main (void)
 					if(power_dbm <  power_tmp)
 					power_dbm = power_tmp;*/
 
-					itoa(rfgen.power_dbm,Power_string,10);
+					itoa(rfgen.power_dbm,rfgen.Power_string,10);
 
-					string_digits_commas_dbm(Power_string, Power_string_print);
+					string_digits_commas_dbm(rfgen.Power_string, ui.Power_string_print);
 				}
 
 				if(pow_changed == 1)
@@ -769,8 +641,8 @@ int main (void)
 					}
 
 					power_tmp = LMX2592.PowerB;
-					itoa(rfgen.power_dbm,Power_string,10);
-					string_digits_commas_dbm(Power_string, Power_string_print);
+					itoa(rfgen.power_dbm,rfgen.Power_string,10);
+					string_digits_commas_dbm(rfgen.Power_string, ui.Power_string_print);
 					itoa(LMX2592.PowerB,PowerB_string_print,10);
 				}
 
@@ -881,14 +753,7 @@ int main (void)
 	return(0);
 }
 
-void OLEDcommand(uint8_t command)
-{
-	uint8_t tmp[2];
-	tmp[0] = 0x80;
-	tmp[1] = command;
-	TWI_MasterWrite(&twiMaster, OLED_ADD, tmp,2,0);
-	while (twiMaster.status != TWIM_STATUS_READY);
-}
+
 
 
 void main_suspend_action(void)
@@ -957,4 +822,14 @@ void main_cdc_set_dtr(uint8_t port, bool b_enable)
 		ui_com_close(port);
 		USB_port = 0;
 	}
+}
+
+
+void OLEDcommand(uint8_t command)
+{
+	uint8_t tmp[2];
+	tmp[0] = 0x80;
+	tmp[1] = command;
+	TWI_MasterWrite(&twiMaster, OLED_ADD, tmp,2,0);
+	while (twiMaster.status != TWIM_STATUS_READY);
 }

@@ -43,6 +43,7 @@
 #include "LMX2592.h"
 #include "RFgen.h"
 #include "power.h"
+#include "scpi_user_config.h"
 extern LMX2592_t LMX2592;
 extern ui_t ui;
 extern rfgen_t rfgen;
@@ -96,7 +97,9 @@ static scpi_result_t GENERATOR_SCPI_SetOutput(scpi_t * context) {
 	return SCPI_RES_OK;
 }
 static scpi_result_t GENERATOR_SCPI_QueryPower(scpi_t * context) {
-	SCPI_ResultInt16(context, (rfgen.power_dbm));
+	char Power_string_print[6];
+	string_digits_commas_dbm_scpi(rfgen.Power_string, Power_string_print);
+	SCPI_ResultText(context, (Power_string_print));
 	return SCPI_RES_OK;
 }
 
@@ -113,10 +116,16 @@ static scpi_result_t GENERATOR_SCPI_SetPower(scpi_t * context) {
 		SCPI_ErrorPush(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
 		return SCPI_RES_ERR;
 	}
-	rfgen.power_dbm = (param1.content.value);
-
-
-	LMX2592_configure(&LMX2592);
+	if(param1.unit == SCPI_UNIT_DBM)
+	{
+		rfgen.power_dbm = ((float)param1.content.value)*10;
+		LMX2592_configure(&LMX2592);
+	}
+	else
+	{
+		SCPI_ErrorPush(context, SCPI_ERROR_INCOMPATIBLE_TYPE);
+		return SCPI_RES_ERR;
+	}
 	return SCPI_RES_OK;
 }
 static scpi_result_t DMM_MeasureVoltageDcQ(scpi_t * context) {
@@ -238,7 +247,7 @@ static scpi_result_t TEST_Numbers(scpi_t * context) {
 
     SCPI_CommandNumbers(context, numbers, 2, 1);
 
-    fprintf(stderr, "TEST numbers %d %d\r\n", numbers[0], numbers[1]);
+    //fprintf(stderr, "TEST numbers %d %d\r\n", numbers[0], numbers[1]);
 
     return SCPI_RES_OK;
 }
@@ -251,7 +260,7 @@ static scpi_result_t TEST_Text(scpi_t * context) {
         buffer[0] = '\0';
     }
 
-    fprintf(stderr, "TEXT: ***%s***\r\n", buffer);
+    //fprintf(stderr, "TEXT: ***%s***\r\n", buffer);
 
     return SCPI_RES_OK;
 }
@@ -455,11 +464,6 @@ const scpi_command_t scpi_commands[] = {
     {.pattern = "SYSTem:ERRor:COUNt?", .callback = SCPI_SystemErrorCountQ,},
     {.pattern = "SYSTem:VERSion?", .callback = SCPI_SystemVersionQ,},
 
-    /* {.pattern = "STATus:OPERation?", .callback = scpi_stub_callback,}, */
-    /* {.pattern = "STATus:OPERation:EVENt?", .callback = scpi_stub_callback,}, */
-    /* {.pattern = "STATus:OPERation:CONDition?", .callback = scpi_stub_callback,}, */
-    /* {.pattern = "STATus:OPERation:ENABle", .callback = scpi_stub_callback,}, */
-    /* {.pattern = "STATus:OPERation:ENABle?", .callback = scpi_stub_callback,}, */
 
     {.pattern = "STATus:QUEStionable[:EVENt]?", .callback = SCPI_StatusQuestionableEventQ,},
     /* {.pattern = "STATus:QUEStionable:CONDition?", .callback = scpi_stub_callback,}, */
@@ -479,6 +483,7 @@ const scpi_command_t scpi_commands[] = {
     {.pattern = "MEASure:FRESistance?", .callback = SCPI_StubQ,},
     {.pattern = "MEASure:FREQuency?", .callback = SCPI_StubQ,},
     {.pattern = "MEASure:PERiod?", .callback = SCPI_StubQ,},
+
 	/* GENERATOR */
 	{.pattern = "SOURce:FREQuency", .callback = GENERATOR_SCPI_SetFrequency,},
 	{.pattern = "SOURce:FREQuency?", .callback = GENERATOR_SCPI_QueryFrequency,},
@@ -486,6 +491,61 @@ const scpi_command_t scpi_commands[] = {
 	{.pattern = "SOURce:POWer?", .callback = GENERATOR_SCPI_QueryPower,},
 	{.pattern = "OUTput:STATe", .callback = GENERATOR_SCPI_SetOutput,},
 	{.pattern = "OUTput:STATe?", .callback = GENERATOR_SCPI_QueryOutput,},
+
+	{.pattern = "PLL:OSC:FREQuency?", .callback = NULL,},
+	{.pattern = "PLL:OSC:FREQuency", .callback = NULL,},
+	{.pattern = "PLL:OSC:DOUbler?", .callback = NULL,},
+	{.pattern = "PLL:OSC:DOUbler", .callback = NULL,},
+	{.pattern = "PLL:OSC:MULTiplier?", .callback = NULL,},
+	{.pattern = "PLL:OSC:MULTiplier", .callback = NULL,},
+	{.pattern = "PLL:OSC:PRERdivider?", .callback = NULL,},
+	{.pattern = "PLL:OSC:PRERdivider", .callback = NULL,},
+	{.pattern = "PLL:OSC:POSTRdivider?", .callback = NULL,},
+	{.pattern = "PLL:OSC:POSTRdivider", .callback = NULL,},
+	{.pattern = "PLL:PFD:FREQuency?", .callback = NULL,},
+	{.pattern = "PLL:PFD:DELay?", .callback = NULL,},
+	{.pattern = "PLL:PFD:DELay", .callback = NULL,},
+	{.pattern = "PLL:PFD:HIgh?", .callback = NULL,},
+	{.pattern = "PLL:PDF:HIgh", .callback = NULL,},
+	{.pattern = "PLL:PFD:LOW?", .callback = NULL,},
+	{.pattern = "PLL:PFD:LOW", .callback = NULL,},
+	{.pattern = "PLL:PFD:CONtrol?", .callback = NULL,},
+	{.pattern = "PLL:PFD:CONtrol", .callback = NULL,},
+	{.pattern = "PLL:DIV:PRE?", .callback = NULL,},
+	{.pattern = "PLL:DIV:PRE", .callback = NULL,},
+	{.pattern = "PLL:DIV:DENominator?", .callback = NULL,},
+	{.pattern = "PLL:DIV:DENominator", .callback = NULL,},
+	{.pattern = "PLL:DIV:NUMerator?", .callback = NULL,},
+	{.pattern = "PLL:DIV:NUMerator", .callback = NULL,},
+	{.pattern = "PLL:VCO:DBL?", .callback = NULL,},
+	{.pattern = "PLL:VCO:DBL", .callback = NULL,},
+	{.pattern = "PLL:VCO:CHARGepump?", .callback = NULL,},
+	{.pattern = "PLL:VCO:CHARGepump", .callback = NULL,},
+	{.pattern = "PLL:MASH:SEED?", .callback = NULL,},
+	{.pattern = "PLL:MASH:SEED", .callback = NULL,},
+	{.pattern = "PLL:MASH:ORDER?", .callback = NULL,},
+	{.pattern = "PLL:MASH:ORDER", .callback = NULL,},
+	{.pattern = "PLL:MASH:DITHER?", .callback = NULL,},
+	{.pattern = "PLL:MASH:DITHER", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG1:VALue?", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG1:VALue", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG1:ENable?", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG1:ENable", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG2:VALue?", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG2:VALue", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG2:ENable?", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG2:ENable", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG3:VALue?", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG3:VALue", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG3:ENable?", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIVSEG3:ENable", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIV:ENable?", .callback = NULL,},
+	{.pattern = "PLL:CHANnel:DIV:ENable", .callback = NULL,},
+	{.pattern = "PLL:OUTput:MUX?", .callback = NULL,},
+	{.pattern = "PLL:OUTput:MUX", .callback = NULL,},
+	{.pattern = "PLL:OUTput:POWer?", .callback = NULL,},
+	{.pattern = "PLL:OUTput:POWer", .callback = NULL,},
+
 
 
 	{.pattern = "SYSTem:COMMunication:TCPIP:CONTROL?", .callback = SCPI_SystemCommTcpipControlQ,},
@@ -501,14 +561,16 @@ const scpi_command_t scpi_commands[] = {
 };
 
 scpi_interface_t scpi_interface = {
-    .error = SCPI_Error,
-    .write = SCPI_Write,
-    .control = SCPI_Control,
-    .flush = SCPI_Flush,
-    .reset = SCPI_Reset,
+	.error = SCPI_Error,
+	.write = SCPI_Write,
+	.control = SCPI_Control,
+	.flush = SCPI_Flush,
+	.reset = SCPI_Reset,
 };
 
 char scpi_input_buffer[SCPI_INPUT_BUFFER_LENGTH];
 scpi_error_t scpi_error_queue_data[SCPI_ERROR_QUEUE_SIZE];
 
 scpi_t scpi_context;
+
+

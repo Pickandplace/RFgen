@@ -43,6 +43,7 @@
 #include <stdint.h>
 #include "libscpi/inc/scpi/config.h"
 
+
 #if HAVE_STDBOOL
 #include <stdbool.h>
 #endif
