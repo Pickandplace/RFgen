@@ -1,4 +1,4 @@
-Epsilon r Labs RF Generator 30MHz 9.8GHz
+#Epsilon r Labs RF Generator 30MHz 9.8GHz
 Copyright (C) 2017 Jean Wlodarski
 KaZjjW at gmailcom
 
