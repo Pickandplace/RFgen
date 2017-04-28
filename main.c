@@ -41,7 +41,7 @@
 #include "RFgen.h"
 #include "scpi_user_config.h"
 
-
+#define SERIAL_DEBUG
 #define TWI_MASTER       TWIE
 #define TWI_MASTER_PORT  PORTE
 #define TWI_MASTER_ADDR  0x50
@@ -121,6 +121,7 @@ int main (void)
 
 	//uint8_t spi_buffer[10];
 	uint32_t i;
+	bool lock_already_lost;
 	board_init();
 	RfgenBoardInit();
 
@@ -204,6 +205,9 @@ int main (void)
 
 
 	//PORTD_OUTCLR = PIN0_bm;
+	/*ui = malloc(sizeof(ui_t));
+	rfgen = malloc(sizeof(rfgen_t));
+	LMX2592 = malloc(sizeof(LMX2592_t));*/
 
 	RFgenReset(&LMX2592, &ui, &rfgen);
 	freq_changed = 0;
@@ -404,12 +408,21 @@ int main (void)
 			if(rfgen.lock_lost == 0)
 				ui.refresh = 1;
 			rfgen.lock_lost	= 1;
-			SCPI_ErrorPush(&scpi_context,SCPI_ERROR_PLL_UNLOCKED);
+			if(lock_already_lost == 0 )
+			{
+				SCPI_ErrorPush(&scpi_context,SCPI_ERROR_PLL_UNLOCKED);
+				lock_already_lost = 1;
+			}
 		}
 		else{
 			if(rfgen.lock_lost == 1)
 				ui.refresh = 1;
 			rfgen.lock_lost = 0;
+			if(lock_already_lost == 0 )
+			{
+				SCPI_ErrorPop(&scpi_context,SCPI_ERROR_PLL_UNLOCKED);
+				lock_already_lost = 0;
+			}
 		}
 
 		if(cnt_old < (TCC0.CNT&0xfffe))
@@ -729,20 +742,24 @@ int main (void)
 			PowerSend(&LMX2592, rfgen.Frequency_10, rfgen.power_dbm);
 			LMX2592_RFonOff(&LMX2592, 1);
 			LMX2592_configure(&LMX2592);
-			/*if (USB_port == 1)
-			{
-				Display_ui(&LMX2592);
-			}*/
+			#ifdef SERIAL_DEBUG
+				if (USB_port == 1)
+				{
+					Display_ui(&LMX2592);
+				}
+			#endif
 		}
 		else
 		{
 			LMX2592_set_out_freq(&LMX2592, rfgen.Frequency_10, 0);
 			LMX2592_RFonOff(&LMX2592, 0);
 			LMX2592_configure(&LMX2592);
-			/*if (USB_port == 1)
-			{
-				Display_ui(&LMX2592);
-			}*/
+			#ifdef SERIAL_DEBUG
+				if (USB_port == 1)
+				{
+					Display_ui(&LMX2592);
+				}
+			#endif
 		}
 
 

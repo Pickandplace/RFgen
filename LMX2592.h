@@ -164,16 +164,25 @@
 #define PFD_OPTIMAL	200000000
 #define OSC_MULT_MIN	40000000
 #define OSC_MULT_MAX	70000000
-#define OUT_FREQ_MAX_KHZ	1000000000
-#define OUT_FREQ_MIN_KHZ	2000000
-#define VCO_MIN_FREQ_KHZ	355000000
-#define VCO_MAX_FREQ_KHZ	710000000
-#define VCO_DOUBLED_MIN_FREQ_KHZ	355000000
-#define VCO_DOUBLED_MAX_FREQ_KHZ	980000000
+#define OUT_FREQ_MAX_10HZ	1000000000
+#define OUT_FREQ_MIN_10HZ	2000000
+#define VCO_MIN_FREQ_10HZ	355000000
+#define VCO_MAX_FREQ_10HZ	710000000
+#define VCO_DOUBLED_MIN_FREQ_10HZ	355000000
+#define VCO_DOUBLED_MAX_FREQ_10HZ	980000000
 #define PLL_R_PRE_MAX				0x0fff
+
+typedef struct LMX2592_regs_struct{
+	uint8_t		RF_out_div_seg1;//Output divider 1 (by 2 or 3)
+	uint8_t		RF_out_div_seg2;//Output divider 1 (by 2, 4, 6 or 8)
+	uint8_t		RF_out_div_seg3;//Output divider 1 (by 2, 4, 6 or 8)
+}LMX2592_regs_t;
+
+
 typedef struct LMX2592_struct{
 	uint32_t	OSC_freq;		//Oscillator frequency (Hz)
 	uint32_t	Out_freq;		//Output frequency, in KHz
+	uint32_t	VCO_freq_10HZ;
 	bool		osc_dbl;		//Oscillator low noise doubler
 	uint16_t	PLL_R_pre_div;	//Oscillator pre-divider (12bits)
 	uint8_t		osc_mult;		//Oscillator multiplier (5bits)
@@ -215,8 +224,9 @@ typedef struct LMX2592_struct{
 	bool		CH_div_dist_PD;//Power down buffer between VCO and channel divider
 	bool		CH_div_distB_EN;//Enable buffer between channel divider and output B
 	uint16_t	PLL_out_div;	//Total output divider (debug)
-
+	LMX2592_regs_t	regs;
 }LMX2592_t;
+
 
 
 //#define VCO_D_B_PD(x)	(((x) & 0x80) >> 7)
@@ -246,12 +256,15 @@ uint8_t LMX2592_init_config(LMX2592_t *LMX2592);
 int8_t LMX2592_set_out_pow_level(LMX2592_t *LMX2592, uint8_t RFlevel);
 void LMX2592_RFonOff(LMX2592_t *LMX2592, bool rfOn);
 uint32_t LMX2592_search_divider(LMX2592_t *LMX2592, uint32_t freq_10);
-void LMX2592_search_pre_R(LMX2592_t *LMX2592);
+void LMX2592_search_pre_R(LMX2592_t *LMX2592, uint32_t	PFD_freq_tmp);
 uint32_t gcd_iter(uint32_t u, uint32_t v) ;
 void LMX2592_write_24_reg(uint32_t reg);
+
+int8_t LMX2592_translate_regs(LMX2592_t *LMX2592);
+int8_t LMX2592_configure_dither(LMX2592_t *LMX2592);
 # define do_div(n, base) ({                                             \
-        uint32_t __base = (base);                                   \
-        uint32_t __rem;                                             \
+        uint64_t __base = (base);                                   \
+        uint64_t __rem;                                             \
         __rem = ((uint64_t)(n)) % __base;                     \
         (n) = ((uint64_t)(n)) / __base;                       \
          __rem;                                                          \

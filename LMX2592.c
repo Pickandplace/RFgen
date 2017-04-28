@@ -85,6 +85,10 @@ uint8_t LMX2592_init_config(LMX2592_t *LMX2592)
 	LMX2592->CH_div_seg2_EN	=	0;
 	LMX2592->CH_div_seg3_EN	=	0;
 	LMX2592->CH_div_distB_EN =	0;
+
+	LMX2592->regs.RF_out_div_seg1=	0;
+	LMX2592->regs.RF_out_div_seg2=	0;
+	LMX2592->regs.RF_out_div_seg3=	0;
 	return(1);
 
 }
@@ -124,8 +128,8 @@ uint8_t LMX2592_configure(LMX2592_t *LMX2592)
 	registers[22] = (1<<14) | (1<<9) | (1<<4) ; //Reg32
 	registers[23] = (1<<14) | (1<<9) | (1<<4) ; //Reg33
 	registers[24] = (3<<14) | (0xF<<6) | CHDIV_EN(LMX2592->Channel_div_EN) | (1<<4); //Reg34
-	registers[25] = CHDIV_SEG2(LMX2592->RF_out_div_seg2) | CHDIV_SEG3_EN(LMX2592->CH_div_seg3_EN) | CHDIV_SEG2_EN(LMX2592->CH_div_seg2_EN) | (3<<3) | CHDIV_SEG1(LMX2592->RF_out_div_seg1) | CHDIV_SEG1_EN(LMX2592->CH_div_seg1_EN) | 1; //Reg35
-	registers[26] = CHDIV_DISTB_EN(LMX2592->CH_div_distB_EN) | CHDIV_DISTA_EN(0) | CHDIV_SEG_SEL(LMX2592->CH_div_SEL) | CHDIV_SEG3(LMX2592->RF_out_div_seg3) ; //Reg36
+	registers[25] = CHDIV_SEG2(LMX2592->regs.RF_out_div_seg2) | CHDIV_SEG3_EN(LMX2592->CH_div_seg3_EN) | CHDIV_SEG2_EN(LMX2592->CH_div_seg2_EN) | (3<<3) | CHDIV_SEG1(LMX2592->regs.RF_out_div_seg1) | CHDIV_SEG1_EN(LMX2592->CH_div_seg1_EN) | 1; //Reg35
+	registers[26] = CHDIV_DISTB_EN(LMX2592->CH_div_distB_EN) | CHDIV_DISTA_EN(0) | CHDIV_SEG_SEL(LMX2592->CH_div_SEL) | CHDIV_SEG3(LMX2592->regs.RF_out_div_seg3) ; //Reg36
 	registers[27] = (1<<14) | PLL_N_PRE(LMX2592->PLL_pre_N) ; //Reg37
 	registers[28] = PLL_N(LMX2592->PLL_n_div) ; //Reg38
 	registers[29] = (1<<15) | PFD_DLY(LMX2592->PFD_delay) | (1<<2) ; //Reg39
@@ -160,27 +164,28 @@ uint8_t LMX2592_configure(LMX2592_t *LMX2592)
 
 int8_t LMX2592_set_out_freq(LMX2592_t *LMX2592, uint32_t freq_10, uint8_t RFpower)
 {
-	uint32_t spacing = 1;//1KHz channel spacing
+	uint32_t spacing = 100;//1KHz channel spacing
 	uint64_t tmp=0;
 	uint32_t gcd;
 
 
-	if( (freq_10 < OUT_FREQ_MIN_KHZ) || (freq_10 > OUT_FREQ_MAX_KHZ) )
+	if( (freq_10 < OUT_FREQ_MIN_10HZ) || (freq_10 > OUT_FREQ_MAX_10HZ) )
 		return -1;
 	LMX2592->Out_freq = freq_10;
 	LMX2592_set_PFD(LMX2592, LMX2592->OSC_freq);
 
 	freq_10 = LMX2592_search_divider(LMX2592, freq_10);
 
-	if(LMX2592->Out_freq > VCO_MAX_FREQ_KHZ)
+	if(LMX2592->Out_freq > VCO_MAX_FREQ_10HZ)
 		{
 			LMX2592->VCO_doubler = 1;
 			LMX2592->PLL_pre_N = 4;
-			freq_10 = (freq_10)>>2;
+			freq_10 = (freq_10) >>1;
 		}
 	else
 	{
 		freq_10 = (freq_10)>>1;
+		LMX2592->PLL_pre_N = 2;
 		LMX2592->VCO_doubler = 0;
 	}
 
@@ -194,24 +199,29 @@ int8_t LMX2592_set_out_freq(LMX2592_t *LMX2592, uint32_t freq_10, uint8_t RFpowe
 		}while( den_tmp > 0xfffffff );
 
 		LMX2592->PLL_den = (uint32_t)den_tmp;
-		tmp = freq_10 * 10ul * (uint64_t)LMX2592->PLL_den ;//+ (LMX2592->PFD_freq );
+		tmp = freq_10 * (uint64_t)LMX2592->PLL_den ;//+ (LMX2592->PFD_freq );
+		tmp *= 10ul;
 		do_div(tmp, LMX2592->PFD_freq); // Div round closest (n + d/2)/d
 		LMX2592->PLL_num = do_div(tmp, LMX2592->PLL_den);
 		LMX2592->PLL_n_div = tmp;
 
-		if(LMX2592->PLL_n_div < 10)
+		if(LMX2592->PLL_num != 0)
 		{
-			LMX2592_search_pre_R(LMX2592);
-			spacing = 10;
+			gcd = gcd_iter((uint32_t)LMX2592->PLL_den, (uint32_t)LMX2592->PLL_num);
+			LMX2592->PLL_den = LMX2592->PLL_den / gcd;
+			LMX2592->PLL_num = LMX2592->PLL_num / gcd;
+		}
+
+		LMX2592->VCO_freq_10HZ = (LMX2592->PFD_freq/10) * 2 * (LMX2592->PLL_n_div + (LMX2592->PLL_num/LMX2592->PLL_den));
+		if((LMX2592->PLL_n_div < 10) || (LMX2592->VCO_freq_10HZ > VCO_MAX_FREQ_10HZ))
+		{
+			LMX2592_search_pre_R(LMX2592,	LMX2592->PFD_freq);
+
+			//spacing = 10;
 		}
 	}while( (LMX2592->PLL_n_div < 10));
 
-	if(LMX2592->PLL_num != 0)
-	{
-		gcd = gcd_iter((uint32_t)LMX2592->PLL_den, (uint32_t)LMX2592->PLL_num);
-		LMX2592->PLL_den = LMX2592->PLL_den / gcd;
-		LMX2592->PLL_num = LMX2592->PLL_num / gcd;
-	}
+
 
 	if(LMX2592->RF_out_div_seg2 == 1)
 		LMX2592->RF_out_div_seg2 = 0;
@@ -221,89 +231,6 @@ int8_t LMX2592_set_out_freq(LMX2592_t *LMX2592, uint32_t freq_10, uint8_t RFpowe
 	if(LMX2592->PFD_freq > 200000000ul)
 		LMX2592->PFD_control = 3;
 
-	if(LMX2592->PLL_n_div >= 8)
-		LMX2592->PFD_delay = 1;
-	if(LMX2592->PLL_num != 0)
-	{
-		LMX2592->MASH_dith_EN = 1;
-		if(LMX2592->PLL_n_div >= 11){
-			LMX2592->PFD_delay = 1;
-			LMX2592->Mash_Order = 1;
-		}
-		if(LMX2592->PLL_n_div >= 16){
-			LMX2592->PFD_delay = 1;
-			LMX2592->Mash_Order = 2;
-		}
-		if(LMX2592->PLL_n_div >= 18){
-			LMX2592->PFD_delay = 2;
-			LMX2592->Mash_Order = 3;
-		}
-		if(LMX2592->PLL_n_div >= 30){
-			LMX2592->PFD_delay = 8;
-			LMX2592->Mash_Order = 4;
-		}
-		if(LMX2592->PLL_n_div <11){
-			LMX2592->PFD_delay = 1;
-			LMX2592->Mash_Order = 0; //No Mash if div==9
-
-		}
-
-	}
-	else//Integer mode
-		{
-			LMX2592->PFD_delay = 1;
-			LMX2592->Mash_Order = 0;
-			LMX2592->MASH_dith_EN = 0;
-		}
-	if(LMX2592->Mash_Order == 0)
-		LMX2592->MASH_dith_EN = 0;
-	LMX2592->Out_B_mux = 1;
-	LMX2592->CH_div_dist_PD = 1;
-	LMX2592->CH_div_SEL = 0;
-	LMX2592->Channel_div_EN = 0;
-	LMX2592->VCO_dist_B_PD = 0;
-
-	if(LMX2592->RF_out_div_seg1 >1)
-	{
-		LMX2592->VCO_dist_B_PD = 1;
-		LMX2592->CH_div_dist_PD = 0;
-		LMX2592->CH_div_seg1_EN = 1;
-		if(RFpower != 0xFF)
-			LMX2592->CH_div_PD = 0;
-		LMX2592->Out_B_mux = 0;
-		if(LMX2592->RF_out_div_seg1 == 3)
-			LMX2592->RF_out_div_seg1 = 1;
-		if(LMX2592->RF_out_div_seg1 == 2)
-			LMX2592->RF_out_div_seg1 = 0;
-		LMX2592->CH_div_SEL = 1;
-		LMX2592->CH_div_distB_EN = 1;
-		LMX2592->Channel_div_EN = 1;
-	}
-	if(LMX2592->RF_out_div_seg2 >0)
-	{
-		LMX2592->CH_div_seg2_EN = 1;
-		if(LMX2592->RF_out_div_seg2 == 2 )
-			LMX2592->RF_out_div_seg2 = 1;	//Translate to register code
-		if(LMX2592->RF_out_div_seg2 == 4 )
-			LMX2592->RF_out_div_seg2 = 2;
-		if(LMX2592->RF_out_div_seg2 == 6 )
-			LMX2592->RF_out_div_seg2 = 4;
-
-		LMX2592->CH_div_SEL = 2;
-
-	}
-	if(LMX2592->RF_out_div_seg3 >0)
-	{
-		LMX2592->CH_div_seg3_EN = 1;
-		if(LMX2592->RF_out_div_seg3 == 2 )
-			LMX2592->RF_out_div_seg3 = 1;	//Translate to register code
-		if(LMX2592->RF_out_div_seg3 == 4 )
-			LMX2592->RF_out_div_seg3 = 2;
-		if(LMX2592->RF_out_div_seg3 == 6 )
-			LMX2592->RF_out_div_seg3 = 4;
-
-		LMX2592->CH_div_SEL = 4;
-	}
 	LMX2592->OUT_B_PD = 1;
 	if(RFpower != 0xFF)
 	{
@@ -328,8 +255,11 @@ int8_t LMX2592_set_out_freq(LMX2592_t *LMX2592, uint32_t freq_10, uint8_t RFpowe
 	if(LMX2592->PFD_freq < 5000000)
 		LMX2592->Low_PFD = 3;
 
+	LMX2592_configure_dither(LMX2592);
+	LMX2592_translate_regs(LMX2592);
 	return(1);
 }
+
 
 int8_t LMX2592_set_out_pow_level(LMX2592_t *LMX2592, uint8_t RFlevel)
 {
@@ -347,19 +277,25 @@ uint32_t gcd_iter(uint32_t u, uint32_t v)
 	}
 	return u ;
 }
-void LMX2592_search_pre_R(LMX2592_t *LMX2592)
+void LMX2592_search_pre_R(LMX2592_t *LMX2592, uint32_t	PFD_freq_tmp)
 {
 	if(LMX2592->osc_dbl == 1)
 	{
-		LMX2592->osc_dbl = 0;
-		LMX2592->PFD_freq >>= 1;
+		while(LMX2592->VCO_freq_10HZ > VCO_MAX_FREQ_10HZ)
+		{
+			LMX2592->PLL_R_pre_div++;
+			LMX2592->PFD_freq = (PFD_freq_tmp  / LMX2592->PLL_R_pre_div);
+			LMX2592->VCO_freq_10HZ = (LMX2592->PFD_freq/10) * 2 * ((float)LMX2592->PLL_n_div + (float)(LMX2592->PLL_num/LMX2592->PLL_den));
+		};
 	}
 	else
 	{
-		do {
+		while(LMX2592->VCO_freq_10HZ > VCO_MAX_FREQ_10HZ)
+		{
 			LMX2592->PLL_R_pre_div++;
-			LMX2592->PFD_freq = (LMX2592->PFD_freq  / LMX2592->PLL_R_pre_div);
-		}while(LMX2592->PFD_freq>VCO_MAX_FREQ_KHZ);
+			LMX2592->PFD_freq = (PFD_freq_tmp  / LMX2592->PLL_R_pre_div);
+			LMX2592->VCO_freq_10HZ = (LMX2592->PFD_freq/10) * 2 * ((float)LMX2592->PLL_n_div + (float)(LMX2592->PLL_num/LMX2592->PLL_den));
+		};
 	}
 }
 
@@ -573,4 +509,103 @@ void LMX2592_write_reg(uint8_t reg, uint16_t regvalue)
 		buffer[2] = (regvalue & 0xFF);
 		spi_write_packet(&SPIC,buffer,3);
 	spi_deselect_device();
+}
+
+int8_t LMX2592_translate_regs(LMX2592_t *LMX2592)
+{
+		LMX2592->Out_B_mux = 1;
+		LMX2592->CH_div_dist_PD = 1;
+		LMX2592->CH_div_SEL = 0;
+		LMX2592->Channel_div_EN = 0;
+		LMX2592->VCO_dist_B_PD = 0;
+		LMX2592->CH_div_seg1_EN = 0;
+		LMX2592->CH_div_seg2_EN = 0;
+		LMX2592->CH_div_seg3_EN = 0;
+
+		if(LMX2592->RF_out_div_seg1 >1)
+		{
+			LMX2592->VCO_dist_B_PD = 1;
+			LMX2592->CH_div_dist_PD = 0;
+			LMX2592->CH_div_seg1_EN = 1;
+
+			LMX2592->Out_B_mux = 0;
+			if(LMX2592->RF_out_div_seg1 == 3)
+				LMX2592->regs.RF_out_div_seg1 = 1;
+
+			if(LMX2592->RF_out_div_seg1 == 2)
+				LMX2592->regs.RF_out_div_seg1 = 0;
+
+			LMX2592->CH_div_SEL = 1;
+			LMX2592->CH_div_distB_EN = 1;
+			LMX2592->Channel_div_EN = 1;
+		}
+
+		if(LMX2592->RF_out_div_seg2 >0)
+		{
+			LMX2592->CH_div_seg2_EN = 1;
+			if(LMX2592->RF_out_div_seg2 == 2 )
+				LMX2592->regs.RF_out_div_seg2 = 1;	//Translate to register code
+			if(LMX2592->RF_out_div_seg2 == 4 )
+				LMX2592->regs.RF_out_div_seg2 = 2;
+			if(LMX2592->RF_out_div_seg2 == 6 )
+				LMX2592->regs.RF_out_div_seg2 = 4;
+
+			LMX2592->CH_div_SEL = 2;
+
+		}
+		if(LMX2592->RF_out_div_seg3 >0)
+		{
+			LMX2592->CH_div_seg3_EN = 1;
+			if(LMX2592->RF_out_div_seg3 == 2 )
+				LMX2592->regs.RF_out_div_seg3 = 1;	//Translate to register code
+			if(LMX2592->RF_out_div_seg3 == 4 )
+				LMX2592->regs.RF_out_div_seg3 = 2;
+			if(LMX2592->RF_out_div_seg3 == 6 )
+				LMX2592->regs.RF_out_div_seg3 = 4;
+
+			LMX2592->CH_div_SEL = 4;
+		}
+	return(1);
+}
+
+int8_t LMX2592_configure_dither(LMX2592_t *LMX2592)
+{
+
+	if(LMX2592->PLL_n_div >= 8)
+	LMX2592->PFD_delay = 1;
+	if(LMX2592->PLL_num != 0)
+	{
+		LMX2592->MASH_dith_EN = 1;
+		if(LMX2592->PLL_n_div >= 11){
+			LMX2592->PFD_delay = 1;
+			LMX2592->Mash_Order = 1;
+		}
+		if(LMX2592->PLL_n_div >= 16){
+			LMX2592->PFD_delay = 1;
+			LMX2592->Mash_Order = 2;
+		}
+		if(LMX2592->PLL_n_div >= 18){
+			LMX2592->PFD_delay = 2;
+			LMX2592->Mash_Order = 3;
+		}
+		if(LMX2592->PLL_n_div >= 30){
+			LMX2592->PFD_delay = 8;
+			LMX2592->Mash_Order = 4;
+		}
+		if(LMX2592->PLL_n_div <11){
+			LMX2592->PFD_delay = 1;
+			LMX2592->Mash_Order = 0; //No Mash if div==9
+
+		}
+
+	}
+	else//Integer mode
+	{
+		LMX2592->PFD_delay = 1;
+		LMX2592->Mash_Order = 0;
+		LMX2592->MASH_dith_EN = 0;
+	}
+	if(LMX2592->Mash_Order == 0)
+	LMX2592->MASH_dith_EN = 0;
+	return(1);
 }

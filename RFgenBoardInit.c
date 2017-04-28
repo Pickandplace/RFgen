@@ -355,7 +355,7 @@ scpi_result_t SCPI_SystemCommTcpipControlQ(scpi_t * context) {
 
 void RFgenReset(LMX2592_t *LMX2592, ui_t *ui, rfgen_t *rfgen)
 {
-	rfgen->Frequency_10 = 10000000; //100MHz
+	rfgen->Frequency_10 = 810000000; //100MHz
 	rfgen->power_dbm = -100; //-10.0 dBm
 	ltoa(rfgen->Frequency_10,rfgen->Freq_string,10);
 	string_digits_commas(rfgen->Freq_string,ui->Freq_string_print);
@@ -373,7 +373,7 @@ void RFgenReset(LMX2592_t *LMX2592, ui_t *ui, rfgen_t *rfgen)
 	LMX2592_defaults();
 
 	LMX2592_set_PFD(LMX2592, 100000000);
-	LMX2592_set_out_freq(LMX2592,10000000, 0xFF);
+	LMX2592_set_out_freq(LMX2592,rfgen->Frequency_10, 0xFF);
 	LMX2592_RFonOff(LMX2592, 0);
 	LMX2592_configure(LMX2592);
 	//LMX2592_write_24_reg(0x002304  );

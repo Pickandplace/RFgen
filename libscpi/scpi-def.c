@@ -62,7 +62,7 @@ static scpi_result_t GENERATOR_SCPI_SetFrequency(scpi_t * context) {
 		SCPI_ErrorPush(context, SCPI_ERROR_MISSING_PARAMETER);
 		return SCPI_RES_ERR;
 	}
-	if( ((param1.content.value/10) < OUT_FREQ_MIN_KHZ) || ((param1.content.value/10) > OUT_FREQ_MAX_KHZ) )
+	if( ((param1.content.value/10) < OUT_FREQ_MIN_10HZ) || ((param1.content.value/10) > OUT_FREQ_MAX_10HZ) )
 		{
 			SCPI_ErrorPush(context, SCPI_ERROR_DATA_OUT_OF_RANGE);
 			return SCPI_RES_ERR;
@@ -529,18 +529,11 @@ const scpi_command_t scpi_commands[] = {
 	{.pattern = "PLL:MASH:DITHER", .callback = NULL,},
 	{.pattern = "PLL:CHANnel:DIVSEG1:VALue?", .callback = NULL,},
 	{.pattern = "PLL:CHANnel:DIVSEG1:VALue", .callback = NULL,},
-	{.pattern = "PLL:CHANnel:DIVSEG1:ENable?", .callback = NULL,},
-	{.pattern = "PLL:CHANnel:DIVSEG1:ENable", .callback = NULL,},
 	{.pattern = "PLL:CHANnel:DIVSEG2:VALue?", .callback = NULL,},
 	{.pattern = "PLL:CHANnel:DIVSEG2:VALue", .callback = NULL,},
-	{.pattern = "PLL:CHANnel:DIVSEG2:ENable?", .callback = NULL,},
-	{.pattern = "PLL:CHANnel:DIVSEG2:ENable", .callback = NULL,},
 	{.pattern = "PLL:CHANnel:DIVSEG3:VALue?", .callback = NULL,},
 	{.pattern = "PLL:CHANnel:DIVSEG3:VALue", .callback = NULL,},
-	{.pattern = "PLL:CHANnel:DIVSEG3:ENable?", .callback = NULL,},
-	{.pattern = "PLL:CHANnel:DIVSEG3:ENable", .callback = NULL,},
 	{.pattern = "PLL:CHANnel:DIV:ENable?", .callback = NULL,},
-	{.pattern = "PLL:CHANnel:DIV:ENable", .callback = NULL,},
 	{.pattern = "PLL:OUTput:MUX?", .callback = NULL,},
 	{.pattern = "PLL:OUTput:MUX", .callback = NULL,},
 	{.pattern = "PLL:OUTput:POWer?", .callback = NULL,},
