@@ -28,8 +28,19 @@
 #ifndef CALIBRATION_H_
 #define CALIBRATION_H_
 
-uint16_t cal_pow[10][100]; //frequency: 0G..9.8G in 1G steps ; -35dBm..+15dBm in 0.5dB steps. (5..0)(5..0): (LMX2592 power)(ATT value)
+#define CAL_POW_EEPROM_PAGE 1
+#define CAL_POW_EEPROM_ADDR CAL_POW_EEPROM_PAGE * EEPROM_PAGE_SIZE
 
-int16_t min_power[10]; //Contains values for min. power for each F range -35dBm..+15dBm
-int16_t max_power[10]; //Contains values for max. power for each F range -35dBm..+15dBm
+#define CAL_POW_FREQ	10
+#define CAL_POW_STEPS	50
+//uint16_t cal_pow[10][100]; //frequency: 0G..9.8G in 1G steps ; -35dBm..+15dBm in 0.5dB steps. (5..0)(5..0): (LMX2592 power)(ATT value)
+typedef struct cal_pow_struct{
+	uint16_t cal_pow[CAL_POW_FREQ][CAL_POW_STEPS];//frequency: 0G..9.8G in 1G steps ; -35dBm..+15dBm in 0.5dB steps. (5..0)(5..0): (LMX2592 power)(ATT value)
+}cal_pow_t;
+
+int16_t min_power[CAL_POW_FREQ]; //Contains values for min. power for each F range -35dBm..+15dBm
+int16_t max_power[CAL_POW_FREQ]; //Contains values for max. power for each F range -35dBm..+15dBm
+
+int8_t read_cal_EEPROM(cal_pow_t *cal_pow);
+
 #endif /* CALIBRATION_H_ */

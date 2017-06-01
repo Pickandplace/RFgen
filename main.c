@@ -40,7 +40,8 @@
 #include "scpi-def.h"
 #include "RFgen.h"
 #include "scpi_user_config.h"
-
+#include <calibration.h>
+#include <nvm.h>
 #define SERIAL_DEBUG
 #define TWI_MASTER       TWIE
 #define TWI_MASTER_PORT  PORTE
@@ -50,6 +51,7 @@
 
 
 TWI_Master_t twiMaster;
+struct nvm_device_serial serialID;
 uint8_t twiBuffer[10];
 uint8_t i;
 #define F_SYS   32000000
@@ -88,7 +90,7 @@ bool enc_inc;
 bool freq_changed, pow_changed;
 static volatile bool main_b_cdc_enable = true;
 volatile uint8_t USB_port;
-
+cal_pow_t cal_pow;
 ISR(TWIE_TWIM_vect)
     {
       TWI_MasterInterruptHandler(&twiMaster);
@@ -187,6 +189,7 @@ int main (void)
 
 	*/
 
+ //read_cal_EEPROM(&cal_pow);
 
 	sysclk_enable_peripheral_clock(&TWI_MASTER);
 	TWI_MasterInit(&twiMaster, &TWIE, TWI_MASTER_INTLVL_HI_gc, TWI_BAUDSETTING);
@@ -222,6 +225,8 @@ int main (void)
 	QDEC_Total_Setup(&PORTA, 6, false, 0, EVSYS_CHMUX_PORTA_PIN6_gc, 0, EVSYS_QDIRM_00_gc, &TCC0, TC_EVSEL_CH0_gc, 16382);
 
 
+	nvm_read_device_serial(&serialID);
+
 	freq_tmp = rfgen.Frequency_10;
 
 	uint8_t tmp;
@@ -230,12 +235,12 @@ int main (void)
 	TCC0.CNT = 1000;
 	cnt_old = TCC0.CNT;
 
-		PORTA_DIRCLR = PIN0_bm;
-		PORTA_DIRCLR = PIN1_bm;
-		PORTA_DIRCLR = PIN2_bm;
-		PORTA_DIRCLR = PIN3_bm;
-		PORTA_DIRCLR = PIN4_bm;
-		PORTA_DIRCLR = PIN5_bm;
+	PORTA_DIRCLR = PIN0_bm;
+	PORTA_DIRCLR = PIN1_bm;
+	PORTA_DIRCLR = PIN2_bm;
+	PORTA_DIRCLR = PIN3_bm;
+	PORTA_DIRCLR = PIN4_bm;
+	PORTA_DIRCLR = PIN5_bm;
 
 	PORTD_OUTCLR = PIN3_bm;
 	PORTD_OUTSET = PIN3_bm;

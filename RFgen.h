@@ -77,6 +77,8 @@
 #define FREQ_UPPPER_LIMIT	1000000000//10GHz
 #define FREQ_LOWER_LIMIT 2000000//20MHz
 #define ENC_INIT		100
+
+
 typedef struct rfgen_struct  {
 	bool		rfOnOff;
 	bool		lock_lost;

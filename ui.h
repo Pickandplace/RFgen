@@ -99,8 +99,9 @@ void ui_com_overflow(void);
  * \param framenumber  Current frame number
  */
 void ui_process(uint16_t framenumber);
-void Display_ui(LMX2592_t *LMX2592);
+ void Display_ui(LMX2592_t *LMX2592);
 void Val8bitToASCII(uint8_t value, char*ascii);
 volatile uint16_t numberFromAscii(char *buffer);
 char *uint64toa( uint64_t value, char *buffer, int base );
+
 #endif // _UI_H_

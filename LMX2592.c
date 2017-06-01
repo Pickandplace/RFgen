@@ -65,7 +65,7 @@ uint8_t LMX2592_init_config(LMX2592_t *LMX2592)
 
 	LMX2592->PFD_control	=	0;
 	LMX2592->Charge_pump_I	=	0x0f;
-	LMX2592->Charge_pump_x	=	3;
+	LMX2592->Charge_pump_x	=	1;
 	LMX2592->Channel_div_EN	=	0;
 //	LMX2592->Ch_div_seg_EN	=	0;
 	LMX2592->Mash_seed		=	1;
@@ -97,11 +97,6 @@ uint8_t LMX2592_configure(LMX2592_t *LMX2592)
 	uint16_t registers[43];
 	uint8_t buffer[3];
 	int8_t i;
-
-	for (i=0;i<43;i++)
-	{
-		registers[i] = 0;
-	}
 
 	registers[0]  = LD_EN(1) | (1<<9) | FCAL_HPFD_ADJ(LMX2592->High_PFD) | FCAL_LPFD_ADJ(LMX2592->Low_PFD) | (1<<4) | FCAL_EN(1) | MUXOUT_SEL(1) | RESET(0) | POWERDOWN(0);
 	registers[1]  = (1<<11) | (1<<3) | CAL_CLK_DIV(0);
@@ -213,13 +208,14 @@ int8_t LMX2592_set_out_freq(LMX2592_t *LMX2592, uint32_t freq_10, uint8_t RFpowe
 		}
 
 		LMX2592->VCO_freq_10HZ = (LMX2592->PFD_freq/10) * 2 * (LMX2592->PLL_n_div + (LMX2592->PLL_num/LMX2592->PLL_den));
-		if((LMX2592->PLL_n_div < 10) || (LMX2592->VCO_freq_10HZ > VCO_MAX_FREQ_10HZ))
+		if((LMX2592->PLL_n_div < 8) || (LMX2592->VCO_freq_10HZ > VCO_MAX_FREQ_10HZ))
 		{
 			LMX2592_search_pre_R(LMX2592,	LMX2592->PFD_freq);
 
 			//spacing = 10;
 		}
-	}while( (LMX2592->PLL_n_div < 10));
+
+	}while( (LMX2592->PLL_n_div < 8) );
 
 
 
@@ -573,7 +569,7 @@ int8_t LMX2592_configure_dither(LMX2592_t *LMX2592)
 
 	if(LMX2592->PLL_n_div >= 8)
 	LMX2592->PFD_delay = 1;
-	if(LMX2592->PLL_num != 0)
+	if(LMX2592->PLL_num > 1)
 	{
 		LMX2592->MASH_dith_EN = 1;
 		if(LMX2592->PLL_n_div >= 11){
@@ -581,7 +577,7 @@ int8_t LMX2592_configure_dither(LMX2592_t *LMX2592)
 			LMX2592->Mash_Order = 1;
 		}
 		if(LMX2592->PLL_n_div >= 16){
-			LMX2592->PFD_delay = 1;
+			LMX2592->PFD_delay = 2;
 			LMX2592->Mash_Order = 2;
 		}
 		if(LMX2592->PLL_n_div >= 18){

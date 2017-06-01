@@ -19,5 +19,40 @@
 */
 #include <asf.h>
 #include <LMX2592.h>
+#include <calibration.h>
 extern LMX2592_t LMX2592;
 
+
+
+
+int8_t read_cal_EEPROM(cal_pow_t *cal_pow)
+{
+	uint8_t read_page[EEPROM_PAGE_SIZE];
+	uint8_t i,j,k,l;
+	k = 0;
+	uint8_t tmp = 0;
+	uint8_t tmp2;
+	//nvm_eeprom_read_buffer(CAL_POW_EEPROM_ADDR+k,read_page, EEPROM_PAGE_SIZE);
+	for(tmp = 0 ; tmp < EEPROM_PAGE_SIZE ; tmp++)
+		read_page[tmp] = k;
+
+	for(i=0;i<CAL_POW_FREQ;i++)
+	{
+		for(j=0;j<CAL_POW_STEPS; j++)
+		{
+			tmp2= ((i+1)*(j+1) )/EEPROM_PAGE_SIZE ;
+			if(  ( ( (i+1)*(j+1) )/EEPROM_PAGE_SIZE ) == 1 )
+				{
+					//nvm_eeprom_read_buffer(CAL_POW_EEPROM_ADDR+k,read_page, EEPROM_PAGE_SIZE);
+					for(tmp = 0 ; tmp < EEPROM_PAGE_SIZE ; tmp++)
+						read_page[tmp] = k;
+					k++;
+					l=0;
+				}
+			cal_pow->cal_pow[i][j] = read_page[l];
+			l++;
+		}
+
+	}
+
+}

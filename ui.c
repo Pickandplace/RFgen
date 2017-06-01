@@ -34,29 +34,25 @@ void Display_ui(LMX2592_t *LMX2592)
 {
 	uint8_t i;
 	char rx_char;
-	char WELCOME_STRING[] = "\r\n\r\nEpsilon R Labs RF Generator\r\n";
-	char MENU1_STRING[] = "Intensity (0..255) :";
-	char MENU2_STRING[] = "DD/MM/YY :";
-	char MENU3_STRING[] = "hh:mm :";
-	char MENU6_STRING[] = "Frequency (128..999) :";
-	char MENU7_STRING[] = "Negative Threshold (7..12) :";
-	char MENU8_STRING[] = "Burst Length (8..32) :";
-	char MENU9_STRING[] = "Burst Repetition (1..63) :";
-	char MENUa_STRING[] = "NDIL (1..31) :";
+/*
+	const char WELCOME_STRING[] PROGMEM = "\r\n\r\nEpsilon R Labs RF Generator\r\n";
+	const char MENU1_STRING[] PROGMEM = "Intensity (0..255) :";
+	const  char FREQUENCY_SET_STRING[] PROGMEM = "\r\nFset: ";
+	const char PLL_pre_N_STRING[] PROGMEM = "\r\nPRE N: ";
+	const char PLL_n_div_STRING[] PROGMEM = "\r\nN DIV: ";
+	const char PLL_num_STRING[] PROGMEM = "\r\nNUM: ";
+	const char PLL_den_STRING[] PROGMEM = "\r\nDEN: ";
+	const char VCO_dbl_STRING[] PROGMEM = "\r\nVCO Doubler: ";
+	const char VCO_freq_STRING[] PROGMEM = "\r\nVCO Freq: ";
+	const char PFD_freq_STRING[] PROGMEM = "\r\nPFD Freq: ";
+	const char RF_out_div_seg1_STRING[] PROGMEM = "\r\nOUT DIV1: ";
+	const char RF_out_div_seg2_STRING[] PROGMEM = "\r\nOUT DIV2: ";
+	const char RF_out_div_seg3_STRING[] PROGMEM = "\r\nOUT DIV3: ";
+	const char Mash_Order_STRING[] PROGMEM = "\r\nMash_Order: ";
+	const char MASH_dith_EN_STRING[] PROGMEM = "\r\nMash Dither: ";
+	const char PFD_delay_STRING[] PROGMEM = "\r\nPFD Delay: ";
 
-	char FREQUENCY_SET_STRING[] = "\r\nFset: ";
-	char PLL_pre_N_STRING[] = "\r\nPRE N: ";
-	char PLL_n_div_STRING[] = "\r\nN DIV: ";
-	char PLL_num_STRING[] = "\r\nNUM: ";
-	char PLL_den_STRING[] = "\r\nDEN: ";
-	char VCO_dbl_STRING[] = "\r\nVCO Doubler: ";
-	char PFD_freq_STRING[] = "\r\nPFD Freq: ";
-	char RF_out_div_seg1_STRING[] = "\r\nOUT DIV1: ";
-	char RF_out_div_seg2_STRING[] = "\r\nOUT DIV2: ";
-	char RF_out_div_seg3_STRING[] = "\r\nOUT DIV3: ";
-	char Mash_Order_STRING[] = "\r\nMash_Order: ";
-	char MASH_dith_EN_STRING[] = "\r\nMash Dither: ";
-	char PFD_delay_STRING[] = "\r\nPFD Delay: ";
+*/
 
 	//char _STRING[] = "\r\n: ";
 	//char MENU4_STRING[] = "Display date and time";
@@ -70,55 +66,59 @@ void Display_ui(LMX2592_t *LMX2592)
 		udi_cdc_putc('\r');
 		udi_cdc_putc('\n');
 
-		udi_cdc_write_buf(FREQUENCY_SET_STRING,sizeof(FREQUENCY_SET_STRING));
+		udi_cdc_write_buf("\r\nFset: ",sizeof("\r\nFset: "));
 		uint64toa(LMX2592->Out_freq,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(PLL_pre_N_STRING,sizeof(PLL_pre_N_STRING));
+		udi_cdc_write_buf("\r\nPRE N: ",sizeof("\r\nPRE N: "));
 		utoa(LMX2592->PLL_pre_N,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(PLL_n_div_STRING,sizeof(PLL_n_div_STRING));
+		udi_cdc_write_buf("\r\nN DIV: ",sizeof("\r\nN DIV: "));
 		utoa(LMX2592->PLL_n_div,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(PLL_num_STRING,sizeof(PLL_num_STRING));
+		udi_cdc_write_buf("\r\nNUM: ",sizeof("\r\nNUM: "));
 		ultoa(LMX2592->PLL_num,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(PLL_den_STRING,sizeof(PLL_den_STRING));
+		udi_cdc_write_buf("\r\nDEN: ",sizeof("\r\nDEN: "));
 		ultoa(LMX2592->PLL_den,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(VCO_dbl_STRING,sizeof(VCO_dbl_STRING));
+		udi_cdc_write_buf("\r\nVCO Doubler: ",sizeof("\r\nVCO Doubler: "));
 		utoa(LMX2592->VCO_doubler,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(PFD_freq_STRING,sizeof(PFD_freq_STRING));
+		udi_cdc_write_buf("\r\nVCO Freq: ",sizeof("\r\nVCO Freq: "));
+		ultoa(LMX2592->VCO_freq_10HZ * 10,rx_buffer,10);
+		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
+
+		udi_cdc_write_buf("\r\nPFD Freq: ",sizeof("\r\nPFD Freq: "));
 		ultoa(LMX2592->PFD_freq,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(RF_out_div_seg1_STRING,sizeof(RF_out_div_seg1_STRING));
+		udi_cdc_write_buf("\r\nOUT DIV1: ",sizeof("\r\nOUT DIV1: "));
 		utoa(LMX2592->RF_out_div_seg1,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(RF_out_div_seg2_STRING,sizeof(RF_out_div_seg2_STRING));
+		udi_cdc_write_buf("\r\nOUT DIV2: ",sizeof("\r\nOUT DIV2: "));
 		utoa(LMX2592->RF_out_div_seg2,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(RF_out_div_seg3_STRING,sizeof(RF_out_div_seg3_STRING));
+		udi_cdc_write_buf("\r\nOUT DIV3: ",sizeof("\r\nOUT DIV3: "));
 		utoa(LMX2592->RF_out_div_seg3,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(MASH_dith_EN_STRING,sizeof(MASH_dith_EN_STRING));
+		udi_cdc_write_buf("\r\nMash_Order: ",sizeof("\r\nMash_Order: "));
 		utoa(LMX2592->MASH_dith_EN,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(Mash_Order_STRING,sizeof(Mash_Order_STRING));
+		udi_cdc_write_buf("\r\nMash Dither: ",sizeof("\r\nMash Dither: "));
 		utoa(LMX2592->Mash_Order,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
-		udi_cdc_write_buf(PFD_delay_STRING,sizeof(PFD_delay_STRING));
+		udi_cdc_write_buf("\r\nPFD Delay: ",sizeof("\r\nPFD Delay: "));
 		utoa(LMX2592->PFD_delay,rx_buffer,10);
 		udi_cdc_write_buf(rx_buffer,strlen(rx_buffer));
 
@@ -135,12 +135,12 @@ void Display_ui(LMX2592_t *LMX2592)
 			//udi_cdc_putc(12);
 			udi_cdc_putc('\r');
 			udi_cdc_putc('\n');
-			udi_cdc_write_buf(WELCOME_STRING,sizeof(WELCOME_STRING));
+			udi_cdc_write_buf("\r\n\r\nEpsilon R Labs RF Generator\r\n",sizeof("\r\n\r\nEpsilon R Labs RF Generator\r\n"));
 			//MenuPos = 1;
 
 			break;
 			case '1':
-			udi_cdc_write_buf(MENU1_STRING,sizeof(MENU1_STRING));
+			udi_cdc_write_buf("Intensity (0..255) :",sizeof("Intensity (0..255) :"));
 			i = 0;
 			rx_buffer[0] = 48;
 			while(rx_char != 13)
